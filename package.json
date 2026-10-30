@@ -1,0 +1,25 @@
+{
+  "name": "pi-workspace",
+  "version": "0.2.0-dev.0",
+  "private": true,
+  "description": "Record live Pi sessions and restore the workspace from outside Pi; shared core for extension and CLI.",
+  "type": "module",
+  "keywords": ["pi-package", "workspace", "wezterm", "wsl"],
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "files": ["extensions", "src", "bin", "README.md", "docs"],
+  "pi": {
+    "extensions": ["./extensions/open-all.ts"]
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*",
+    "@earendil-works/pi-tui": "*"
+  },
+  "bin": {
+    "pi-workspace": "bin/pi-workspace.js"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  }
+}
