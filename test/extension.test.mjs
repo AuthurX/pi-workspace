@@ -141,7 +141,7 @@ test('/all delegates to shared core: spawns only non-live members, reports via n
   assert.equal(args.includes('Arch'), true);
   assert.equal(args.includes('-d'), true);
   assert.ok(args.at(-1).includes(sessionFile), 'restores by absolute session file');
-  assert.equal(args.at(-1).includes('exec pi --session'), true);
+  assert.equal(args.at(-1).includes("exec '/test/pi' --session"), true);
   assert.match(f.notices.join('\n'), /已创建标签页，超时未确认 pi 启动/);
   assert.equal(fs.readdirSync(f.membersDir).length, 2, 'own live member untouched, no duplicates');
 });

@@ -4,9 +4,9 @@
 
 用户在普通 WSL Shell 中执行一条命令，无需先进入交互式 Pi，即可补齐上次的 Pi 工作会话组合。交付物为一个 Pi package，包含自动登记扩展与独立 CLI；不调用模型。
 
-- 项目目录：`~/work/MY/code/pi-workspcace`（按用户指定拼写）。
-- 包名暂定：`pi-workspace`，未查询 npm 名称可用性。
-- 外部入口：`pi-workspace restore`（已确认），尚未实现。
+- 项目目录：使用者可将仓库克隆到任意目录。
+- npm 包名：`@ellieyujin/pi-reopen`；许可证为 MIT，版权人为 `ellieyujin`。无 scope 的 `pi-workspace` 属于其他作者，见 `PUBLISHING.md`。
+- 外部入口：`pi-workspace restore`（已实现，端到端验收仍待完成）。
 - 第一阶段环境：Windows WezTerm + Arch WSL。
 
 ## 已确认的恢复规则
@@ -107,4 +107,4 @@
 - 关闭判定的具体技术方案：如何可靠检测“Pi 内主动退出”与“被动死亡”（如清理事件与进程存活探测的组合），需设计与真实环境验证。
 - 自动发现 WezTerm 路径的机制，以及发行版/用户隔离的具体实现。
 - 跨进程启动锁、超时、成功回执，以及恢复进程中断后的回收方案。
-- npm 包名 `pi-workspace` 可用性（发布前检查；本地/私有安装不受影响）。
+- 首次 npm 发布与安装验收（包名 `@ellieyujin/pi-reopen`、MIT 许可证已确认，实际发布尚待执行）。

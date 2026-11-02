@@ -38,7 +38,7 @@ export function inspect({ paths = workspacePaths() } = {}) {
  */
 export async function runRestore({
 	env = process.env,
-	paths = workspacePaths(),
+	paths = workspacePaths(env),
 	dryRun = false,
 	noWait = false,
 	waitTimeoutMs = 15_000,
@@ -66,6 +66,8 @@ export async function runRestore({
 		const spawnResult = await openTab({
 			wezterm: pre.wezterm,
 			distro: pre.distro,
+			piBin: pre.piBin,
+			env,
 			cwd: item.entry.cwd,
 			sessionFile: item.sessionFile,
 			spawner,

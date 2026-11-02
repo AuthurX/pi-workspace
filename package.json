@@ -1,16 +1,42 @@
 {
-  "name": "pi-workspace",
+  "name": "@ellieyujin/pi-reopen",
+  "license": "MIT",
   "version": "0.2.0-dev.0",
-  "private": true,
-  "description": "Record live Pi sessions and restore the workspace from outside Pi; shared core for extension and CLI.",
+  "description": "Restore recorded Pi sessions in Windows WezTerm tabs from WSL; includes a Pi extension and standalone CLI.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bridge-01/pi-workspace.git"
+  },
+  "homepage": "https://github.com/bridge-01/pi-workspace#readme",
+  "bugs": {
+    "url": "https://github.com/bridge-01/pi-workspace/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/",
+    "tag": "next"
+  },
   "type": "module",
-  "keywords": ["pi-package", "workspace", "wezterm", "wsl"],
+  "keywords": [
+    "pi-package",
+    "workspace",
+    "wezterm",
+    "wsl"
+  ],
   "engines": {
     "node": ">=22.19.0"
   },
-  "files": ["extensions", "src", "bin", "README.md", "docs"],
+  "files": [
+    "extensions",
+    "src",
+    "bin",
+    "README.md",
+    "docs"
+  ],
   "pi": {
-    "extensions": ["./extensions/open-all.ts"]
+    "extensions": [
+      "./extensions/open-all.ts"
+    ]
   },
   "peerDependencies": {
     "@earendil-works/pi-coding-agent": "*",
@@ -20,6 +46,7 @@
     "pi-workspace": "bin/pi-workspace.js"
   },
   "scripts": {
-    "test": "node --test test/*.test.mjs"
+    "test": "node --test test/*.test.mjs",
+    "prepublishOnly": "npm test"
   }
 }

@@ -40,7 +40,7 @@ export async function run(argv = [], { stdout = process.stdout, env = process.en
 			return 0;
 		}
 		case "list": {
-			for (const line of listLines(inspect())) write(line);
+			for (const line of listLines(inspect({ paths: workspacePaths(env) }))) write(line);
 			return 0;
 		}
 		case "doctor": {
@@ -58,7 +58,7 @@ export async function run(argv = [], { stdout = process.stdout, env = process.en
 			return pre.ok ? 0 : 2;
 		}
 		case "clear": {
-			const removed = clearWorkspace();
+			const removed = clearWorkspace(workspacePaths(env));
 			write(`已清空 ${removed} 条登记与启动占用；对话文件与旧格式记录未删除。`);
 			return 0;
 		}

@@ -1,6 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, statSync } from "node:fs";
 import { discoverWezterm } from "./discover.js";
+import { launchSetup, shellQuote } from "./launch.js";
 
 const BINFMT_FIX_HINT =
 	"WSLInterop 未注册，Windows 程序无法从 WSL 启动。" +
@@ -21,7 +22,7 @@ export function preflight({ env = process.env, wezterm, prober, piProber } = {})
 	const add = (name, ok, detail, hint) => checks.push({ name, ok, detail, hint });
 
 	const distro = env.WSL_DISTRO_NAME;
-	add("WSL 发行版", !!distro, distro || "未设置", distro ? undefined : "缺少 WSL_DISTRO_NAME，无法定向启动标签页");
+	add("WSL 发行版", !!distro, distro || "未设置", distro ? undefined : "恢复仅支持 WSL + Windows WezTerm；缺少 WSL_DISTRO_NAME，无法定向启动标签页");
 
 	add("WSL 互操作套接字", existsSync("/run/WSL"), "/run/WSL", existsSync("/run/WSL") ? undefined : "未找到 /run/WSL，WSL 互操作未启用（检查 wsl.conf 的 interop 设置）");
 
@@ -66,24 +67,25 @@ export function preflight({ env = process.env, wezterm, prober, piProber } = {})
 		}
 	}
 
+	const explicitPi = env.PI_WORKSPACE_PI_BIN;
+	const candidate = explicitPi ? shellQuote(explicitPi) : '"$pi_bin"';
+	const probeScript = [
+		launchSetup(env, explicitPi),
+		...(explicitPi ? [] : ['pi_bin=$(type -P pi) || exit 1']),
+		`[[ ${candidate} = /* && -f ${candidate} && -x ${candidate} ]] || exit 1`,
+		`printf '%s\\n' ${candidate}`,
+	].join("; ");
 	const piProbe = piProber
 		? piProber()
-		: spawnSync(
-				"bash",
-				[
-					"-lc",
-					'export PATH="$HOME/.npm-global/bin:$HOME/.local/bin:$HOME/.pi/agent/bin:$PATH"; command -v pi',
-				],
-				{ timeout: 5000, encoding: "utf8" },
-			);
-	const piPath = String(piProbe.stdout ?? "").trim();
+		: spawnSync("bash", ["-lc", probeScript], { env, timeout: 5000, encoding: "utf8" });
+	const piPath = String(piProbe.stdout ?? "").trim().split(/\r?\n/).at(-1);
 	const piOk = piProbe.status === 0 && !!piPath;
 	add(
 		"pi 命令",
 		piOk,
-		piPath || "未找到",
-		piOk ? undefined : "恢复的标签页内将执行 pi；请先安装 pi",
+		piOk ? piPath : explicitPi || "未找到",
+		piOk ? undefined : "请先安装 pi 并加入 PATH，或设置 PI_WORKSPACE_PI_BIN 为 WSL 内可执行文件的绝对路径（不含参数、别名或 Shell 函数）",
 	);
 
-	return { ok: checks.every((c) => c.ok), wezterm: found, checks, distro };
+	return { ok: checks.every((c) => c.ok), wezterm: found, checks, distro, piBin: piOk ? piPath : undefined };
 }

@@ -8,9 +8,6 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Key } from "@earendil-works/pi-tui";
 
-// 本机开发布局兜底；一般环境靠 realpath 或 PI_WORKSPACE_SRC 定位
-const FALLBACK_SRC = "/home/ellie/work/MY/code/pi-workspcace/src";
-
 function resolveSrcDir(): string {
 	const candidates: string[] = [];
 	if (process.env.PI_WORKSPACE_SRC) candidates.push(process.env.PI_WORKSPACE_SRC);
@@ -19,7 +16,6 @@ function resolveSrcDir(): string {
 	} catch {
 		/* import.meta.url 不可用时忽略 */
 	}
-	candidates.push(FALLBACK_SRC);
 	for (const dir of candidates) {
 		try {
 			realpathSync(join(dir, "restore.js"));
@@ -135,7 +131,19 @@ export default async function (pi: ExtensionAPI) {
 					try {
 						const mtime = fs.statSync(full).mtimeMs;
 						if (now - mtime > ENTRY_WINDOW_MS) continue;
-						const header = JSON.parse(fs.readFileSync(full, "utf8").split("\n")[0]);
+						// 只读首行取会话头，避免加载整个会话文件（可达数 MB）
+						const fd = fs.openSync(full, "r");
+						let firstLine: string;
+						try {
+							const buf = Buffer.alloc(65536);
+							const bytes = fs.readSync(fd, buf, 0, buf.length, 0);
+							const chunk = buf.subarray(0, bytes).toString("utf8");
+							const nl = chunk.indexOf("\n");
+							firstLine = nl === -1 ? chunk : chunk.slice(0, nl);
+						} finally {
+							fs.closeSync(fd);
+						}
+						const header = JSON.parse(firstLine);
 						if (header.id && header.cwd) {
 							candidates.push({ sessionId: header.id, cwd: header.cwd, sessionFile: full, ts: mtime });
 						}
@@ -182,6 +190,7 @@ export default async function (pi: ExtensionAPI) {
 			const result = await spawn.openTab({
 				wezterm: pre.wezterm,
 				distro: pre.distro,
+				piBin: pre.piBin,
 				cwd: entry.cwd,
 				sessionFile: entry.sessionFile,
 			});

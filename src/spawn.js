@@ -1,14 +1,13 @@
 import { spawn } from "node:child_process";
 
-export function shellQuote(value) {
-	return "'" + value.replaceAll("'", "'\\''") + "'";
-}
+import { launchSetup, shellQuote } from "./launch.js";
+export { shellQuote } from "./launch.js";
 
-/** 标签页内执行的脚本：补 PATH（非交互登录 shell 不加载 .bashrc）→ 进目录 → 恢复会话。 */
-export function buildTabScript({ cwd, sessionFile }) {
+/** 登录 shell 初始化后恢复调用方 PATH 和 agent 目录，再启动已预检的 Pi。 */
+export function buildTabScript({ cwd, sessionFile, piBin, env = process.env }) {
 	return [
-		'export PATH="$HOME/.npm-global/bin:$HOME/.local/bin:$HOME/.pi/agent/bin:$PATH"',
-		`cd -- ${shellQuote(cwd)} && exec pi --session ${shellQuote(sessionFile)}`,
+		launchSetup(env, piBin),
+		`cd -- ${shellQuote(cwd)} && exec ${piBin ? shellQuote(piBin) : "pi"} --session ${shellQuote(sessionFile)}`,
 	].join("; ");
 }
 
@@ -36,8 +35,8 @@ function defaultSpawner(program, args) {
  * 请求 WezTerm 打开一个标签页。返回 ok 只代表“请求被 WezTerm 接受”，
  * 不代表 pi 已成功启动——后者由 verify 阶段确认。
  */
-export async function openTab({ wezterm, distro, cwd, sessionFile, spawner } = {}) {
-	const script = buildTabScript({ cwd, sessionFile });
+export async function openTab({ wezterm, distro, cwd, sessionFile, piBin, env = process.env, spawner } = {}) {
+	const script = buildTabScript({ cwd, sessionFile, piBin, env });
 	const args = [
 		"cli",
 		"spawn",

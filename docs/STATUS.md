@@ -1,6 +1,35 @@
 # 本机实现审查
 
-**当前结论：开发中，不能宣称第一版已完成。** 已修复关终端时误删成员的退出判定错误；当前 `npm test` 21/21 通过，隔离真实 Pi PTY 的 SIGHUP、SIGTERM、主动 /quit 三项通过。完整 WezTerm 多窗口恢复、并发启动互斥等仍需验收。下方旧轮次记录不代表当前完成状态。
+**当前结论：开发中，不能宣称第一版已完成。** 已修复关终端时误删成员的退出判定错误；当前 `npm test` 51/51 通过，隔离真实 Pi PTY 的 SIGHUP、SIGTERM、主动 /quit 三项通过。完整 WezTerm 多窗口恢复、并发启动互斥等仍需验收。下方旧轮次记录不代表当前完成状态。
+
+## Package 可移植性与发布准备（2026-10-30）
+
+- 删除扩展源码定位的个人路径兜底，保留 package 相对定位与开发覆盖变量。
+- 增加 `PI_WORKSPACE_PI_BIN`，统一预检与恢复标签页的 Pi 路径、PATH 和 agent 目录；`runRestore({ env })` 的默认记录路径同步使用传入环境。
+- WezTerm 发现不再依赖个人 D 盘位置；支持 PATH，并将 `where.exe` 返回值经 `wslpath` 转换。
+- 补充仓库元信息、`next` 预览发布配置、发布前测试、通用安装和迁移说明。后续经维护者确认，包名为 `@ellieyujin/pi-reopen`，采用 MIT 许可证，版权人为 `ellieyujin`。
+- npm registry 核验：无 scope 的 `pi-workspace` 已属于其他作者；manifest 及发布文档现已同步为 `@ellieyujin/pi-reopen`，完整许可证见根目录 `LICENSE`。这不代表已完成 npm 发布。
+- 验证：51/51 自动化测试通过；真实 Pi PTY 3/3 通过；npm tarball 解压到临时位置后 CLI 和真实 Pi PTY 3/3 通过，未设置 `PI_WORKSPACE_SRC`。
+- 没有执行 npm publish、Git 提交或推送，没有完成真实 WezTerm 多窗口恢复验收。并发锁等既有问题不在本轮修复范围。
+
+## 深度测试轮（2026-10-30）
+
+新增 24 项自动化测试（`test/deep.test.mjs` 18 项 + `test/recent.test.mjs` 6 项），共 45/45 通过；`python test/pty-shutdown.py` 3/3 通过。
+
+**新覆盖**：processStart 解析鲁棒性（comm 含括号/空格、僵尸、缺失）；claim 同 PID 重取/死持有者接管；sweepClaims 保留/删除/损坏声明；plan 的 claimed 状态；resolveSessionFile 优先级与回退；preflight 全项通过（仅 WSL 上可测）与 pi 缺失提示；openTab 无 distro 分支；默认 spawner 成功/失败/ENOENT；shellQuote 回环；listMembers 损坏/缺 ts；成员文件 0600；runRestore 全部被占用时不启动且如实报告；summarize 空结果；CLI 用法/退出码/隔离目录 list+clear。**/all recent 补选路径首次纳入自动化测试**（stub 化 preflight/spawn 后验证候选发现、输入校验、确认、成功登记、失败回收、own/live 排除）。
+
+**本轮修复两处问题**：
+
+1. `src/cli.js`：`list`/`clear` 忽略传入的 `env`（与 `restore`/`doctor` 不一致），改用 `workspacePaths(env)`。bin 入口传 `process.env`，行为不变；仅影响测试与库调用方。
+2. `extensions/open-all.ts` `openRecent`：原先 `readFileSync` 整个会话文件只为取首行（会话文件可达数 MB），改为只读首 64KB 切首行。
+
+**已知限制（记录，未改）**：
+
+- claims 存在 TOCTOU 竞态：两个恢复进程同一瞬间读写声明可能都判空，极端情况多开一个标签页；TTL 只防顺序重复。影响有限，概率极低。
+- 全部待恢复项被其他恢复进程占用时，本次 `restore` 返回 exit 1（冲突视为未完成），语义待确认。
+- 损坏的 claim 文件 `sweepClaims` 不清理，仅在该会话再次被声明或 `clear` 时移除。
+- 非 Linux 平台（macOS/Windows 原生）无 /proc，存活判定退化为“全部判死”；restore 被预检拒绝，无实际危害，但 `list` 状态会误导。环境支持结论：restore 仅 WSL；其他平台仅登记/list/doctor 可用（预检安全拒绝）。
+- 扩展个人路径兜底已在 package 可移植性轮删除。
 
 ## 最新修复：信号退出被误判为主动退出
 
@@ -54,7 +83,7 @@
 
 - 真实六窗口关闭/重开端到端（需用户配合，含提前 `/exit` 场景）。
 - ENOEXEC 真实场景未复现（已修复注册），诊断分支仅注入测试；若再现按 doctor 提示处理。
-- `/all recent` 补选路径未纳入自动化测试（P1 辅助能力）。
+- `/all recent` 补选路径已纳入自动化测试（2026-10-30 深度测试轮，stub 化 preflight/spawn）；真实 WezTerm 开标签页的补选流程仍未端到端验收。
 
 ### 追加：新会话永不登记的缺陷（2026-10-30 晚）
 
