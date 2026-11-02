@@ -4,11 +4,7 @@ npm 包名：`@ellieyujin/pi-reopen`；CLI 命令：`pi-workspace`。采用 [MIT
 
 一个 Pi package：**在 Pi 外一条命令，恢复关闭 WezTerm 时仍打开的 Pi 组合**（进入原目录、加载原对话、等待你输入）。
 
-- [需求基线（14 条已确认规则）](docs/REQUIREMENTS.md)
-- [实现状态与审查记录](docs/STATUS.md)
-- [发布到 npm 与 Pi 目录](docs/PUBLISHING.md)
-
-**目标环境：WSL + Windows 版 WezTerm，Node ≥ 22.19，已安装 Pi。当前为开发预览版，尚未完成真实多窗口恢复验收。**
+**运行环境：WSL + Windows 版 WezTerm，Node ≥ 22.19，已安装 Pi。**
 
 ## 目录
 
@@ -35,7 +31,7 @@ Pi 内等价入口：`/all`（恢复）、`/all clear`、`Ctrl+Shift+O`。
 
 ## 安装
 
-### 从源码安装（npm 发布前可用）
+### 从源码安装
 
 以下命令在 WSL 内运行，安装的是当前检出的源码：
 
@@ -57,9 +53,9 @@ pi-workspace doctor
 pi install git:github.com/bridge-01/pi-workspace
 ```
 
-### 从 npm 安装（维护者发布后）
+### 从 npm 安装
 
-**npm 上无 scope 的 `pi-workspace` 已属于其他作者，不是本项目，请勿安装错包。** 本项目包名为 `@ellieyujin/pi-reopen`，预览版使用 `next` 标签：
+请使用完整包名 `@ellieyujin/pi-reopen`，安装通道为 `next`。npm 上无 scope 的 `pi-workspace` 是其他作者的项目。
 
 ```bash
 pi install npm:@ellieyujin/pi-reopen@next
@@ -90,7 +86,7 @@ pi-workspace doctor
 
 默认从调用方 PATH 和 Bash 登录环境查找 Pi，不再猜测 npm 安装目录。恢复标签页使用预检得到的 Pi 路径，并显式传递调用方 PATH 与 agent 目录；不会把整个环境或认证信息拼入命令行。WezTerm 自动发现依次检查 PATH、常见安装位置和 `where.exe`（经 `wslpath` 转换）。自定义盘符挂载点等未覆盖布局请设置显式路径。修改环境变量后需重启 Pi 进程，`/reload` 不会读取父 Shell 的新环境。
 
-恢复目前使用目标 WSL 发行版的默认用户；请以该用户运行本工具。多用户、自定义 Shell 启动逻辑需另行验证。
+恢复使用目标 WSL 发行版的默认用户；请以该用户运行本工具。
 
 ## 工作原理
 
@@ -102,10 +98,10 @@ pi-workspace doctor
 ## 环境支持
 
 - **WSL（Windows）**：restore 的唯一目标环境，依赖 Bash、Linux `/proc`、Windows WezTerm 与 `wsl.exe` 互操作。恢复前需启动 WezTerm，使其 CLI 能连接到运行实例；不保证自动创建新 GUI 或还原窗口布局。
-- **Linux（非 WSL）/ macOS / Windows 原生**：不支持恢复，通常会被预检拒绝；其他功能未在这些平台验收。非 Linux 平台无 `/proc`，`list` 的存活状态也不可靠。
+- **Linux（非 WSL）/ macOS / Windows 原生**：不在支持范围内；恢复和存活判定依赖 WSL / Linux 环境。
 - Node ≥ 22.19；扩展 TS 由 pi 加载，测试用 Node 原生类型剥离。
 
-## 测试
+## 开发与测试
 
 ```bash
 # 仓库根目录
@@ -115,8 +111,6 @@ npm pack --dry-run
 
 测试覆盖核心恢复、信号处理顺序、reload 清理、`/all recent` 补选、非标准 Pi 安装路径、Shell 转义及 package 移动后的加载。测试通过临时目录和模拟启动器隔离；测试钩子 `PI_WORKSPACE_HOOKS` 不应在正常使用时设置。
 
-可选真实 Pi PTY 测试：`python test/pty-shutdown.py`。使用临时配置和会话，验证 SIGHUP/SIGTERM 退出保留成员、主动 `/quit` 删除成员；不调用模型、不打开可见标签页。这不是 WezTerm 全流程验收。
+可选 Pi PTY 测试：`python test/pty-shutdown.py`。使用临时配置和会话，检查信号退出保留成员、主动 `/quit` 删除成员；不调用模型、不打开可见标签页。
 
-## 尚待真实环境验收
-
-模拟测试不等于端到端验收。待你配合完成：**开多个 Pi + 普通终端 → 关闭 WezTerm → `pi-workspace restore` 验证恢复集合正确**（含提前 `/exit` 一个的场景）。通过前请视为可用但未验收。
+维护者发布步骤见 [发布指南](docs/PUBLISHING.md)。
