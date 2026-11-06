@@ -114,3 +114,8 @@ npm pack --dry-run
 可选 Pi PTY 测试：`python test/pty-shutdown.py`。使用临时配置和会话，检查信号退出保留成员、主动 `/quit` 删除成员；不调用模型、不打开可见标签页。
 
 维护者发布步骤见 [发布指南](docs/PUBLISHING.md)。
+
+## 贡献者
+
+- [AuthurX](https://github.com/AuthurX)
+- [abelxiaoxing](https://github.com/abelxiaoxing)
