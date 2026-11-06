@@ -4,7 +4,7 @@
 
 Pi 没有要求把源码上传到单独的 Pi 注册中心。分发有两条路径：
 
-1. **Git 分发**：推送仓库后，别人用 `pi install git:github.com/bridge-01/pi-workspace` 安装；不需要先发布 npm。正式分享建议固定已推送的 tag 或 commit。
+1. **Git 分发**：推送仓库后，别人用 `pi install git:github.com/AuthurX/pi-workspace` 安装；不需要先发布 npm。正式分享建议固定已推送的 tag 或 commit。
 2. **npm 分发 / Pi 目录发现**：发布公开 npm 包，包含 `keywords: ["pi-package"]` 和 `pi.extensions`。官方说明关键词让包具备被 [Pi package gallery](https://pi.dev/packages) 发现的资格；没有承诺即时收录或固定同步时限。
 
 当前 package 已包含扩展 manifest、CLI bin、host peerDependencies、公开发布配置与发布前测试。源码 TypeScript 由 Pi 加载，无需单独构建。
