@@ -36,7 +36,8 @@
   "pi": {
     "extensions": [
       "./extensions/open-all.ts"
-    ]
+    ],
+    "image": "https://raw.githubusercontent.com/bridge-01/pi-workspace/main/assets/preview.png"
   },
   "peerDependencies": {
     "@earendil-works/pi-coding-agent": "*",
