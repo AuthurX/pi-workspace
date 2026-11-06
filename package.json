@@ -5,11 +5,11 @@
   "description": "Restore recorded Pi sessions in Windows WezTerm tabs from WSL; includes a Pi extension and standalone CLI.",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/bridge-01/pi-workspace.git"
+    "url": "git+https://github.com/AuthurX/pi-workspace.git"
   },
-  "homepage": "https://github.com/bridge-01/pi-workspace#readme",
+  "homepage": "https://github.com/AuthurX/pi-workspace#readme",
   "bugs": {
-    "url": "https://github.com/bridge-01/pi-workspace/issues"
+    "url": "https://github.com/AuthurX/pi-workspace/issues"
   },
   "publishConfig": {
     "access": "public",
@@ -37,7 +37,7 @@
     "extensions": [
       "./extensions/open-all.ts"
     ],
-    "image": "https://raw.githubusercontent.com/bridge-01/pi-workspace/main/assets/preview.png"
+    "image": "https://raw.githubusercontent.com/AuthurX/pi-workspace/main/assets/preview.png"
   },
   "peerDependencies": {
     "@earendil-works/pi-coding-agent": "*",

@@ -36,7 +36,7 @@ Pi 内等价入口：`/all`（恢复）、`/all clear`、`Ctrl+Shift+O`。
 以下命令在 WSL 内运行，安装的是当前检出的源码：
 
 ```bash
-git clone https://github.com/bridge-01/pi-workspace.git
+git clone https://github.com/AuthurX/pi-workspace.git
 cd pi-workspace
 pi install .
 mkdir -p "$HOME/.local/bin"
@@ -50,7 +50,7 @@ pi-workspace doctor
 只需要扩展时，也可直接安装已推送的 Git 版本：
 
 ```bash
-pi install git:github.com/bridge-01/pi-workspace
+pi install git:github.com/AuthurX/pi-workspace
 ```
 
 ### 从 npm 安装
