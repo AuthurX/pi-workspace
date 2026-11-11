@@ -1,4 +1,4 @@
-import { claimSession, sweepClaims } from "./claims.js";
+import { acquireRestoreLock, claimSession, releaseRestoreLock, sweepClaims } from "./claims.js";
 import { listMembers } from "./members.js";
 import { buildRestorePlan } from "./plan.js";
 import { preflight } from "./preflight.js";
@@ -32,8 +32,11 @@ export function inspect({ paths = workspacePaths() } = {}) {
 	return { members, plan };
 }
 
+/** 连续请求失败达此值时提前停止（WezTerm 多半已卡死，继续只会堆积更多超时等待）。 */
+const MAX_CONSECUTIVE_FAILURES = 3;
+
 /**
- * 恢复编排：预检 → 计划 → 声明启动占用 → 逐个开标签页 → 等待登记确认。
+ * 恢复编排：预检 → 计划 → 全局恢复锁 → 声明启动占用 → 逐个发开标签页请求 → 等待登记确认。
  * 结果如实区分：requested（WezTerm 接受请求）与 verified（Pi 已启动并登记）。
  */
 export async function runRestore({
@@ -42,6 +45,7 @@ export async function runRestore({
 	dryRun = false,
 	noWait = false,
 	waitTimeoutMs = 15_000,
+	spawnTimeoutMs,
 	spawner,
 	prober,
 	piProber,
@@ -55,35 +59,53 @@ export async function runRestore({
 	if (dryRun) {
 		return { ok: true, stage: "dry-run", plan };
 	}
-	const baseline = Date.now();
-	const results = [];
-	for (const item of plan.restorable) {
-		const claim = claimSession(item.entry.sessionId, process.pid, paths);
-		if (!claim.claimed) {
-			results.push({ ...item, state: "claimed" });
-			continue;
-		}
-		const spawnResult = await openTab({
-			wezterm: pre.wezterm,
-			distro: pre.distro,
-			piBin: pre.piBin,
-			env,
-			cwd: item.entry.cwd,
-			sessionFile: item.sessionFile,
-			spawner,
-		});
-		results.push({
-			...item,
-			requested: spawnResult.ok,
-			requestError: spawnResult.ok ? undefined : spawnResult.error,
-		});
+	const lock = acquireRestoreLock(paths, process.pid);
+	if (lock.locked) {
+		return { ok: false, stage: "locked", holder: lock.holder, plan };
 	}
-	const requestedIds = results.filter((r) => r.requested).map((r) => r.entry.sessionId);
-	const verification = noWait || requestedIds.length === 0
-		? null
-		: await waitForMembers(requestedIds, { paths, timeoutMs: waitTimeoutMs, baseline });
-	const ok = results.every((r) => r.requested);
-	return { ok, stage: "done", plan, results, verification };
+	try {
+		const baseline = Date.now();
+		const results = [];
+		let consecutiveFailures = 0;
+		let aborted = false;
+		for (const item of plan.restorable) {
+			if (aborted) {
+				results.push({ ...item, requested: false, aborted: true });
+				continue;
+			}
+			const claim = claimSession(item.entry.sessionId, process.pid, paths);
+			if (!claim.claimed) {
+				results.push({ ...item, state: "claimed" });
+				continue;
+			}
+			const spawnResult = await openTab({
+				wezterm: pre.wezterm,
+				distro: pre.distro,
+				piBin: pre.piBin,
+				env,
+				cwd: item.entry.cwd,
+				sessionFile: item.sessionFile,
+				spawner,
+				spawnTimeoutMs,
+			});
+			if (spawnResult.ok) {
+				consecutiveFailures = 0;
+				results.push({ ...item, requested: true });
+			} else {
+				consecutiveFailures++;
+				results.push({ ...item, requested: false, requestError: spawnResult.error });
+			}
+			if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) aborted = true;
+		}
+		const requestedIds = results.filter((r) => r.requested).map((r) => r.entry.sessionId);
+		const verification = noWait || requestedIds.length === 0
+			? null
+			: await waitForMembers(requestedIds, { paths, timeoutMs: waitTimeoutMs, baseline });
+		const ok = results.every((r) => r.requested);
+		return { ok, stage: "done", plan, results, aborted, verification };
+	} finally {
+		releaseRestoreLock(paths, process.pid);
+	}
 }
 
 /** 生成给人看的中文报告行。 */
@@ -95,6 +117,11 @@ export function summarize(result) {
 			lines.push(`  ✖ ${check.name}：${check.detail}`);
 			if (check.hint) lines.push(`    → ${check.hint}`);
 		}
+		return lines;
+	}
+	if (result.stage === "locked") {
+		lines.push("✖ 另一个恢复进程正在进行，本次未打开任何标签页：");
+		lines.push(`  → 持有者 pid ${result.holder?.pid}，开始于 ${new Date(result.holder?.ts).toLocaleString()}`);
 		return lines;
 	}
 	const counts = {};
@@ -114,6 +141,8 @@ export function summarize(result) {
 		const title = r.entry.name || r.entry.sessionId;
 		if (r.state === "claimed") {
 			lines.push(`  ⏭ ${title}：其他恢复进程正在启动，跳过`);
+		} else if (r.aborted) {
+			lines.push(`  ⏭ ${title}：未尝试（WezTerm 请求连续失败，提前停止）`);
 		} else if (!r.requested) {
 			lines.push(`  ✖ ${title}：WezTerm 请求失败 — ${r.requestError}`);
 		} else if (result.verification?.verified.includes(r.entry.sessionId)) {
@@ -126,7 +155,7 @@ export function summarize(result) {
 	if (!result.results.length) {
 		lines.push(`没有待恢复的会话${skippedText}`);
 	} else {
-		lines.push(`已处理 ${result.results.length} 个${skippedText}`);
+		lines.push(`已处理 ${result.results.length} 个${skippedText}${result.aborted ? "（已提前停止）" : ""}`);
 	}
 	return lines;
 }

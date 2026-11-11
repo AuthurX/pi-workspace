@@ -14,7 +14,9 @@ const USAGE = `pi-workspace — 恢复上次的 Pi 终端组合
   pi-workspace list                              查看登记成员与状态
   pi-workspace doctor                            环境检查
   pi-workspace clear                             清空登记（不删除对话文件）
-`;
+
+每个 wezterm cli spawn 请求超过 15s 无响应会终止并报失败，连续 3 次请求失败提前停止；
+默认在全部请求发出后等待各 pi 启动并登记再报告，--no-wait 跳过该等待。`;
 
 function listLines({ plan }) {
 	if (!plan.items.length) return ["没有登记成员。关闭 WezTerm 时仍打开的 Pi 会在下次启动后自动登记。"];

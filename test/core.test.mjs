@@ -8,7 +8,7 @@ import test from 'node:test';
 import { workspacePaths } from '../src/paths.js';
 import { currentBootId, isLive, processStart } from '../src/liveness.js';
 import { clearWorkspace, deleteMember, listMembers, readMember, writeMember } from '../src/members.js';
-import { claimSession, readClaim, releaseClaim, sweepClaims } from '../src/claims.js';
+import { acquireRestoreLock, claimSession, readClaim, releaseClaim, sweepClaims } from '../src/claims.js';
 import { buildRestorePlan, resolveSessionFile } from '../src/plan.js';
 import { buildTabScript, shellQuote } from '../src/spawn.js';
 import { preflight } from '../src/preflight.js';
@@ -168,6 +168,71 @@ test('runRestore reports requested vs verified honestly and claims before spawni
   assert.match(summarize(result).join('\n'), /未确认 pi 启动/);
   assert.equal(spawned[0].args.includes('Arch'), true);
   assert.equal(spawned[0].args.includes('-d'), true);
+});
+
+test('runRestore aborts after 3 consecutive spawn failures and releases the lock', async (t) => {
+  const f = fixture(t);
+  fs.writeFileSync(join(f.home, 'wez.exe'), 'MZ');
+  const ids = ['a1', 'b2', 'c3', 'd4', 'e5', 'f6'];
+  ids.forEach((id, i) => {
+    writeMember({ ...liveEntry(f.paths, id), ...deadIdentity(), ts: 1000 + i }, f.paths);
+  });
+  const order = [];
+  const result = await runRestore({
+    env: { ...f.env, PI_WORKSPACE_WEZTERM: join(f.home, 'wez.exe') },
+    paths: f.paths,
+    noWait: true,
+    prober: () => ({ status: 0, stdout: 'w' }),
+    piProber: () => ({ status: 0, stdout: 'pi' }),
+    spawner: async (_program, args) => {
+      const id = /_([0-9a-z]+)\.jsonl/.exec(args.at(-1))?.[1];
+      order.push(id);
+      if (id === 'c3' || id === 'd4' || id === 'e5') return { ok: false, error: '模拟超时' };
+      return { ok: true };
+    },
+  });
+  assert.deepEqual(order, ['a1', 'b2', 'c3', 'd4', 'e5'], 'f6 必须在连续 3 次失败后停止尝试');
+  assert.equal(result.aborted, true);
+  assert.equal(result.ok, false);
+  const byId = Object.fromEntries(result.results.map((r) => [r.entry.sessionId, r]));
+  assert.equal(byId.a1.requested, true);
+  assert.equal(byId.c3.requested, false);
+  assert.equal(byId.f6.aborted, true);
+  assert.match(summarize(result).join('\n'), /未尝试/);
+  assert.ok(!fs.existsSync(join(f.paths.workspace, 'restore.lock')), '恢复结束后必须释放锁');
+});
+
+test('runRestore refuses to run while a live holder owns the restore lock', async (t) => {
+  const f = fixture(t);
+  const holder = spawn('sleep', ['30'], { stdio: 'ignore' });
+  t.after(() => { try { holder.kill('SIGKILL'); } catch {} });
+  acquireRestoreLock(f.paths, holder.pid);
+  writeMember({ ...liveEntry(f.paths, 'locked'), ...deadIdentity() }, f.paths);
+  fs.writeFileSync(join(f.home, 'wez.exe'), 'MZ');
+  let spawned = 0;
+  const opts = {
+    env: { ...f.env, PI_WORKSPACE_WEZTERM: join(f.home, 'wez.exe') },
+    paths: f.paths,
+    noWait: true,
+    prober: () => ({ status: 0, stdout: 'w' }),
+    piProber: () => ({ status: 0, stdout: 'pi' }),
+    spawner: async () => { spawned++; return { ok: true }; },
+  };
+  const blocked = await runRestore(opts);
+  assert.equal(blocked.stage, 'locked');
+  assert.equal(blocked.ok, false);
+  assert.equal(spawned, 0, '持锁期间不得开标签页');
+  assert.match(summarize(blocked).join('\n'), /另一个恢复进程/);
+  // 跨启动周期的锁（bootId 不一致）即使持有者存活也可接管，防止重启后 PID 重用误判
+  fs.writeFileSync(join(f.paths.workspace, 'restore.lock'), JSON.stringify({ pid: holder.pid, ts: Date.now(), bootId: 'other-boot' }));
+  const rebooted = await runRestore(opts);
+  assert.equal(rebooted.stage, 'done', 'bootId 不一致时不得误判为持锁');
+  assert.equal(spawned, 1);
+  holder.kill('SIGKILL');
+  await new Promise((r) => setTimeout(r, 50));
+  const again = await runRestore(opts);
+  assert.equal(again.stage, 'done', '持有者已死时可接管过期锁');
+  assert.equal(spawned, 2);
 });
 
 test('runRestore refuses to spawn on failed preflight', async (t) => {

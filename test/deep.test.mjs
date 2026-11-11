@@ -179,6 +179,18 @@ test('default spawner (openTab without injection) reports success, failure stder
   assert.match(missing.error, /ENOENT/);
 });
 
+test('default spawner times out when wezterm cli hangs', async (t) => {
+  const f = fixture(t);
+  const hang = join(f.home, 'wez-hang.sh');
+  fs.writeFileSync(hang, '#!/bin/sh\nsleep 30\n');
+  fs.chmodSync(hang, 0o755);
+  const started = Date.now();
+  const result = await openTab({ wezterm: hang, cwd: '/tmp', sessionFile: '/s.jsonl', spawnTimeoutMs: 300 });
+  assert.equal(result.ok, false);
+  assert.match(result.error, /无响应/);
+  assert.ok(Date.now() - started < 5000, '超时必须实际触发而不是永久等待');
+});
+
 test('shellQuote round-trips quotes, backticks, dollars, and backslashes through bash', () => {
   assert.equal(shellQuote(''), "''");
   assert.equal(shellQuote('a"b'), "'a\"b'");
