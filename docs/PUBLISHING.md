@@ -11,7 +11,7 @@ Pi 没有要求把源码上传到单独的 Pi 注册中心。分发有两条路�
 
 ## 发布前必须确认
 
-- **包名**：已确定为 `@ellieyujin/pi-reopen`，使用 npm 账户 `ellieyujin` 发布。无 scope 的 `pi-workspace` 属于其他作者，不是本项目。CLI 命令仍为 `pi-workspace`，不能与另一个同名 CLI 同时全局安装。
+- **包名**：已确定为 `@ellieyujin/pi-reopen`，使用 npm 账户 `ellieyujin` 发布。无 scope 的 `pi-workspace` 属于其他作者，不是本项目。CLI 命令为 `pi-reopen`，与他人的 `pi-workspace` CLI 不冲突。
 - **许可证**：已选择 [MIT](../LICENSE)，版权人为 `ellieyujin`；`package.json.license` 已声明为 `MIT`，发布包须包含完整 LICENSE。
 - **版本**：当前 `0.2.0-dev.0` 是开发预览，`publishConfig.tag` 为 `next`，避免误设为稳定版 `latest`。已发布的同名同版本不能重复发布。
 - **功能验收**：仍需真实 WezTerm 多窗口关闭/重开验收；启动声明不是跨进程原子锁，不能宣称并发恢复绝无重复。先作为预览分享，不把打包成功当成完整功能验收。
@@ -63,7 +63,7 @@ npm publish --access public --tag next
 npm view @ellieyujin/pi-reopen@next name version repository dist-tags --registry=https://registry.npmjs.org/
 pi install npm:@ellieyujin/pi-reopen@next
 npm install -g @ellieyujin/pi-reopen@next --omit=peer
-pi-workspace doctor
+pi-reopen doctor
 ```
 
 - `pi install` 管理扩展资源；外部 CLI 用 npm 全局安装，并确认全局 bin 在 PATH。

@@ -44,7 +44,7 @@
     "@earendil-works/pi-tui": "*"
   },
   "bin": {
-    "pi-workspace": "bin/pi-workspace.js"
+    "pi-reopen": "bin/pi-reopen.js"
   },
   "scripts": {
     "test": "node --test test/*.test.mjs",

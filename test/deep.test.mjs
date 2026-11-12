@@ -247,13 +247,18 @@ test('summarize handles empty restore results', () => {
   assert.match(summarize(result).join('\n'), /没有待恢复的会话/);
 });
 
-test('cli.run: no args prints usage with exit 0, unknown command exits 1', async () => {
+test('cli.run: no args runs restore, unknown command prints usage and exits 1', async (t) => {
+  const f = fixture(t);
+  const env = { ...f.env, PI_WORKSPACE_WEZTERM: join(f.home, 'missing-wezterm.exe') };
   let out = '';
-  const code = await cliRun([], { stdout: { write: (l) => (out += l) } });
-  assert.equal(code, 0);
-  assert.match(out, /pi-workspace —/);
+  const code = await cliRun([], { stdout: { write: (l) => (out += l) }, env });
+  assert.equal(code, 2, '隔离环境预检不通过，不得开标签页');
+  assert.match(out, /环境预检未通过/);
+  out = '';
+  const bogus = await cliRun(['bogus'], { stdout: { write: (l) => (out += l) }, env });
+  assert.equal(bogus, 1);
+  assert.match(out, /pi-reopen —/);
   assert.match(out, /--dry-run/);
-  assert.equal(await cliRun(['bogus'], { stdout: { write: () => {} } }), 1);
 });
 
 test('cli list reads the isolated agent dir', async (t) => {

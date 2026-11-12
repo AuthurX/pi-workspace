@@ -1,6 +1,6 @@
 # @ellieyujin/pi-reopen
 
-npm 包名：`@ellieyujin/pi-reopen`；CLI 命令：`pi-workspace`。采用 [MIT 许可证](LICENSE)，Copyright (c) 2026 ellieyujin。
+npm 包名：`@ellieyujin/pi-reopen`；CLI 命令：`pi-reopen`。采用 [MIT 许可证](LICENSE)，Copyright (c) 2026 ellieyujin。
 
 一个 Pi package：**在 Pi 外一条命令，恢复关闭 WezTerm 时仍打开的 Pi 组合**（进入原目录、加载原对话、等待你输入）。
 
@@ -12,7 +12,7 @@ npm 包名：`@ellieyujin/pi-reopen`；CLI 命令：`pi-workspace`。采用 [MIT
 extensions/open-all.ts   Pi 扩展（薄适配层）：登记存活 Pi、提供 /all
 src/                     共享核心（纯 JS ESM，扩展与 CLI 共用）
   paths/liveness/members/claims/plan/preflight/discover/launch/spawn/verify/restore/cli
-bin/pi-workspace.js      CLI 入口（node 直接运行，免编译）
+bin/pi-reopen.js         CLI 入口（node 直接运行，免编译）
 test/                    Node 内置测试（隔离目录 + 注入式模拟，无真实终端调用）
 docs/                    需求与状态
 ```
@@ -20,11 +20,11 @@ docs/                    需求与状态
 ## 使用
 
 ```bash
-pi-workspace restore            # 补开上次关闭时仍打开的 Pi（已运行的跳过）
-pi-workspace restore --dry-run  # 只看计划，不开标签页
-pi-workspace list               # 查看登记成员与状态
-pi-workspace doctor             # 环境检查（WezTerm / WSL 互操作 / pi）
-pi-workspace clear              # 清空登记（不删对话文件）
+pi-reopen                     # 补开上次关闭时仍打开的 Pi（已运行的跳过）
+pi-reopen restore --dry-run   # 只看计划，不开标签页
+pi-reopen list                # 查看登记成员与状态
+pi-reopen doctor              # 环境检查（WezTerm / WSL 互操作 / pi）
+pi-reopen clear               # 清空登记（不删对话文件）
 ```
 
 Pi 内等价入口：`/all`（恢复）、`/all clear`、`Ctrl+Shift+O`。
@@ -40,9 +40,9 @@ git clone https://github.com/AuthurX/pi-workspace.git
 cd pi-workspace
 pi install .
 mkdir -p "$HOME/.local/bin"
-ln -s "$PWD/bin/pi-workspace.js" "$HOME/.local/bin/pi-workspace"
+ln -s "$PWD/bin/pi-reopen.js" "$HOME/.local/bin/pi-reopen"
 export PATH="$HOME/.local/bin:$PATH"
-pi-workspace doctor
+pi-reopen doctor
 ```
 
 将 PATH 配置保存到 Shell 启动文件以便后续使用。若 CLI 链接已存在，先检查其目标，不要盲目覆盖。
@@ -60,7 +60,7 @@ pi install git:github.com/AuthurX/pi-workspace
 ```bash
 pi install npm:@ellieyujin/pi-reopen@next
 npm install -g @ellieyujin/pi-reopen@next --omit=peer
-pi-workspace doctor
+pi-reopen doctor
 ```
 
 `pi install` 注册并加载扩展，但不保证 CLI 出现在普通 Shell 的 PATH 中；`npm install -g` 安装外部 CLI，npm 全局 bin 目录也需在 PATH 中。CLI 不依赖 Pi 的 peer 包，故使用 `--omit=peer` 避免额外安装宿主。两份安装需要分别更新，并保持版本一致。
@@ -81,7 +81,7 @@ pi-workspace doctor
 ```bash
 export PI_WORKSPACE_PI_BIN="$(type -P pi)"
 export PI_WORKSPACE_WEZTERM="/mnt/c/Program Files/WezTerm/wezterm.exe"
-pi-workspace doctor
+pi-reopen doctor
 ```
 
 默认从调用方 PATH 和 Bash 登录环境查找 Pi，不再猜测 npm 安装目录。恢复标签页使用预检得到的 Pi 路径，并显式传递调用方 PATH 与 agent 目录；不会把整个环境或认证信息拼入命令行。WezTerm 自动发现依次检查 PATH、常见安装位置和 `where.exe`（经 `wslpath` 转换）。自定义盘符挂载点等未覆盖布局请设置显式路径。修改环境变量后需重启 Pi 进程，`/reload` 不会读取父 Shell 的新环境。

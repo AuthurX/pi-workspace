@@ -1,0 +1,56 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write # 创建 GitHub Release
+  id-token: write # npm provenance / trusted publishing (OIDC)
+
+jobs:
+  publish:
+    name: Publish to npm
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out release tag
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+          package-manager-cache: false
+
+      - name: Verify tag matches package version
+        run: |
+          VERSION="v$(node -p "require('./package.json').version")"
+          if [ "$VERSION" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match package.json version $VERSION"
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: npm install --no-fund --no-audit
+
+      - name: Test
+        run: npm test
+
+      - name: Publish to npm
+        run: |
+          PKG_NAME="$(node -p "require('./package.json').name")"
+          PKG_VERSION="$GITHUB_REF_NAME"
+          if npm view "${PKG_NAME}@${PKG_VERSION#v}" version >/dev/null 2>&1; then
+            echo "${PKG_NAME}@${PKG_VERSION#v} is already on npm; skipping"
+          else
+            # 预发布版本 (如 v0.2.0-dev.4) → dist-tag next;正式版 → latest
+            if [[ "$PKG_VERSION" == *-* ]]; then TAG=next; else TAG=latest; fi
+            npm publish --provenance --tag "$TAG"
+          fi
+
+      - name: Create GitHub release
+        run: gh release create "$GITHUB_REF_NAME" --generate-notes --verify-tag
+        env:
+          GH_TOKEN: ${{ github.token }}

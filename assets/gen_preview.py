@@ -155,7 +155,7 @@ LY = WY0 + BAR_H + 54
 LH = 64
 
 # line 1: prompt + command
-runs(LX, LY, [("$ ", GREEN, F_SEMI), ("pi-workspace", TXT, F_SEMI), (" restore", CYAN, F_MED)])
+runs(LX, LY, [("$ ", GREEN, F_SEMI), ("pi-reopen", TXT, F_SEMI)])
 
 # restored lines
 rows = [

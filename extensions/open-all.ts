@@ -1,5 +1,5 @@
 /**
- * pi-workspace 扩展：登记存活 Pi、区分主动退出与被动死亡、提供 Pi 内恢复入口。
+ * pi-reopen 扩展：登记存活 Pi、区分主动退出与被动死亡、提供 Pi 内恢复入口。
  * 核心逻辑在项目 src/*.js（CLI 共用）；本文件只做 Pi 侧适配。
  */
 import { realpathSync } from "node:fs";
@@ -24,7 +24,7 @@ function resolveSrcDir(): string {
 			/* 尝试下一个候选 */
 		}
 	}
-	throw new Error("无法定位 pi-workspace 源码目录；可设置 PI_WORKSPACE_SRC");
+	throw new Error("无法定位 pi-reopen 源码目录；可设置 PI_WORKSPACE_SRC");
 }
 
 const ENTRY_WINDOW_MS = 24 * 3_600_000;

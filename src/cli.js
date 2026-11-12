@@ -7,13 +7,14 @@ import { clearWorkspace } from "./members.js";
 import { inspect, label, runRestore, summarize } from "./restore.js";
 import { preflight } from "./preflight.js";
 
-const USAGE = `pi-workspace — 恢复上次的 Pi 终端组合
+const USAGE = `pi-reopen — 恢复上次的 Pi 终端组合
 
 用法：
-  pi-workspace restore [--dry-run] [--no-wait]   恢复关闭终端时仍打开的 Pi（补开缺失的）
-  pi-workspace list                              查看登记成员与状态
-  pi-workspace doctor                            环境检查
-  pi-workspace clear                             清空登记（不删除对话文件）
+  pi-reopen                       # 补开上次关闭时仍打开的 Pi（已运行的跳过）
+  pi-reopen restore --dry-run     # 只看计划，不开标签页
+  pi-reopen list                  # 查看登记成员与状态
+  pi-reopen doctor                # 环境检查（WezTerm / WSL 互操作 / pi）
+  pi-reopen clear                 # 清空登记（不删除对话文件）
 
 每个 wezterm cli spawn 请求超过 15s 无响应会终止并报失败，连续 3 次请求失败提前停止；
 默认在全部请求发出后等待各 pi 启动并登记再报告，--no-wait 跳过该等待。`;
@@ -34,7 +35,7 @@ export async function run(argv = [], { stdout = process.stdout, env = process.en
 	const hasFlag = (name) => flags.includes(name);
 	const write = (line) => stdout.write(`${line}\n`);
 
-	switch (command) {
+	switch (command ?? "restore") {
 		case "restore": {
 			const result = await runRestore({ env, dryRun: hasFlag("--dry-run"), noWait: hasFlag("--no-wait") });
 			for (const line of summarize(result)) write(line);
@@ -66,6 +67,6 @@ export async function run(argv = [], { stdout = process.stdout, env = process.en
 		}
 		default:
 			write(USAGE);
-			return command ? 1 : 0;
+			return 1;
 	}
 }

@@ -72,7 +72,7 @@ def check(action):
             if expected:
                 import subprocess
                 env = dict(os.environ, PI_CODING_AGENT_DIR=str(agent))
-                result = subprocess.run(['node', str(project / 'bin/pi-workspace.js'), 'list'],
+                result = subprocess.run(['node', str(project / 'bin/pi-reopen.js'), 'list'],
                                         env=env, capture_output=True, text=True, timeout=10)
                 assert result.returncode == 0 and '待恢复' in result.stdout, result.stdout + result.stderr
             print(f'PASS real Pi PTY {action}: member {"retained and listed as restorable" if expected else "removed"}')
