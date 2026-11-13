@@ -22,7 +22,7 @@ docs/                    需求与状态
 ```bash
 pi-reopen                     # 补开上次关闭时仍打开的 Pi（已运行的跳过）
 pi-reopen restore --dry-run   # 只看计划，不开标签页
-pi-reopen list                # 查看登记成员与状态
+pi-reopen list [--wide]       # 查看登记成员与状态（长内容默认截断到终端宽度）
 pi-reopen doctor              # 环境检查（WezTerm / WSL 互操作 / pi）
 pi-reopen clear               # 清空登记（不删对话文件）
 ```

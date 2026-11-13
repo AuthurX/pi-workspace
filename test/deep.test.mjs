@@ -12,7 +12,7 @@ import { buildRestorePlan, resolveSessionFile } from '../src/plan.js';
 import { openTab, shellQuote } from '../src/spawn.js';
 import { preflight } from '../src/preflight.js';
 import { runRestore, summarize } from '../src/restore.js';
-import { run as cliRun } from '../src/cli.js';
+import { run as cliRun, displayWidth } from '../src/cli.js';
 
 function fixture(t) {
   const home = fs.mkdtempSync(join(tmpdir(), 'pi-ws-deep-'));
@@ -272,6 +272,47 @@ test('cli list reads the isolated agent dir', async (t) => {
   assert.equal(code, 0);
   assert.match(out, /cli-list/);
   assert.match(out, /待恢复/);
+});
+
+test('cli list aligns CJK columns and truncates long paths to terminal width', async (t) => {
+  const f = fixture(t);
+  const old = process.env.PI_CODING_AGENT_DIR;
+  process.env.PI_CODING_AGENT_DIR = f.paths.agent;
+  t.after(() => { if (old === undefined) delete process.env.PI_CODING_AGENT_DIR; else process.env.PI_CODING_AGENT_DIR = old; });
+  const longCwd = '/mnt/d/work/NB/10-教案/2026年秋季/四个班级_前三课及教学进度表/一个相当长的子目录名称';
+  writeMember(liveEntry(f.paths, 'align-a', { pid: undefined, processStart: undefined, bootId: undefined, cwd: longCwd }), f.paths);
+  writeMember({ ...liveEntry(f.paths, 'align-b', { pid: undefined, processStart: undefined, bootId: undefined }), sessionFile: '/nonexistent/nope.jsonl' }, f.paths);
+  let out = '';
+  const stdout = { write: (l) => (out += l), columns: 100 };
+  const code = await cliRun(['list'], { stdout, env: f.env });
+  assert.equal(code, 0);
+  const lines = out.trim().split('\n');
+  assert.match(lines[0], /状态/);
+  assert.match(lines[0], /会话/);
+  assert.match(lines[0], /路径/);
+  assert.match(lines[0], /时间/);
+  const data = lines.slice(1);
+  assert.equal(data.length, 2);
+  const sepPos = (line) => displayWidth(line.slice(0, line.indexOf(' | ')));
+  assert.equal(sepPos(data[0]), sepPos(data[1]), '状态列（待恢复/会话文件缺失等）按显示宽度对齐');
+  for (const l of lines) assert.ok(displayWidth(l) <= 100, `每行不超过终端宽度：${l}`);
+  assert.match(out, /…/, '超长路径应被截断');
+  assert.doesNotMatch(out, /相当长的子目录名称/);
+  // --wide 不截断
+  out = '';
+  await cliRun(['list', '--wide'], { stdout, env: f.env });
+  assert.match(out, /相当长的子目录名称/);
+  assert.doesNotMatch(out, /…/);
+  // 窄终端放不下表格时退回未对齐的简单行
+  out = '';
+  await cliRun(['list'], { stdout: { write: (l) => (out += l), columns: 40 }, env: f.env });
+  const narrow = out.trim().split('\n');
+  assert.equal(narrow.length, 2, '窄终端：每个成员一行，无表头');
+  for (const l of narrow) assert.match(l, / \| /);
+  // 无 stdout.columns 时回退到 COLUMNS 环境变量
+  out = '';
+  await cliRun(['list'], { stdout: { write: (l) => (out += l) }, env: { ...f.env, COLUMNS: '40' } });
+  assert.equal(out.trim().split('\n').length, 2, 'COLUMNS 环境变量同样触发窄终端回退');
 });
 
 test('cli clear empties the isolated workspace and keeps session files', async (t) => {
