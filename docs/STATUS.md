@@ -9,6 +9,12 @@
 - 修复 `list | head` 等管道提前关闭时的 EPIPE 崩溃（同步 throw 与异步 error 事件均处理，exit 0）。
 - 验证：55/55 测试通过（新增：CJK 列对齐、宽度截断、--wide、窄终端/COLUMNS 回退）。
 
+## Release workflow 首跑与 WSL 测试门控（2026-11-13）
+
+- 首个版本 tag（v0.2.0-dev.6）触发 `.github/workflows/release.yaml`：ubuntu runner 上 6 个依赖 `/run/WSL` 互操作的测试失败（preflight 真实检查在普通 Linux 上不过），npm 未发布。
+- 修复：core/deep/extension 三个测试文件的 6 个 WSL 专属测试加 `wslOnly` 门控（`fs.existsSync('/run/WSL')`，非 WSL 跳过并注明原因）；recent.test.mjs 本就通过 src 副本 stub preflight，不受影响。
+- v0.2.0-dev.6 tag 已删除（未发布、无 Release），以 0.2.0-dev.7 重新发布。
+
 ## 恢复风暴致 WezTerm 卡死崩溃修复（2026-11-11）
 
 **故障复盘**：30 个待恢复会话一次性发出 30 个 `wezterm cli spawn`（每个 ~0.4s 返回，标签页异步启动）→ 30 个 WSL 互操作会话 + 30 个 pi 进程同时在 7.6GB 的 WSL VM 内启动 → WezTerm GUI（旧版 20240203-110809）在 16:38:49 被 WER 记录为 `AppHangTransient` 后崩溃（WSL VM 本身未重启，无 OOM）→ 已开的 21 个标签页全部被动死亡、记录残留 → 下次恢复再次全量重开，风暴重复。另有并发恢复：第二次运行卡在第一个 `wezterm cli spawn` 上（该调用无超时），Windows 侧客户端随 WezTerm 一起死亡，Linux 侧 `/init`（pid 8569）泄漏挂起。

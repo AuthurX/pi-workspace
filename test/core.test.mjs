@@ -15,6 +15,10 @@ import { preflight } from '../src/preflight.js';
 import { binfmtStatus, PERSIST_HINT } from '../src/binfmt.js';
 import { inspect, runRestore, summarize } from '../src/restore.js';
 
+/** 需要 /run/WSL 互操作的测试仅在 WSL 内运行（CI 为普通 Linux，跳过）。 */
+const ON_WSL = fs.existsSync('/run/WSL');
+const wslOnly = { skip: ON_WSL ? false : '仅 WSL（需 /run/WSL 互操作）' };
+
 function fixture(t) {
   const home = fs.mkdtempSync(join(tmpdir(), 'pi-ws-core-'));
   t.after(() => fs.rmSync(home, { recursive: true, force: true }));
@@ -126,7 +130,7 @@ test('tab script survives quotes, dollars and spaces in cold shells', (t) => {
   assert.deepEqual(result.stdout.trim().split('\n'), [cwd, '--session', '/tmp/saved session.jsonl']);
 });
 
-test('preflight fails closed without spawning when interop is broken', (t) => {
+test('preflight fails closed without spawning when interop is broken', wslOnly, (t) => {
   const f = fixture(t);
   const fakeWez = join(f.home, 'wezterm.exe');
   fs.writeFileSync(fakeWez, 'MZ');
@@ -144,7 +148,7 @@ test('preflight fails closed without spawning when interop is broken', (t) => {
   assert.equal(missingDistro.ok, false);
 });
 
-test('runRestore reports requested vs verified honestly and claims before spawning', async (t) => {
+test('runRestore reports requested vs verified honestly and claims before spawning', wslOnly, async (t) => {
   const f = fixture(t);
   const spawned = [];
   const entry = { ...liveEntry(f.paths, 'to-restore'), ...deadIdentity() };
@@ -170,7 +174,7 @@ test('runRestore reports requested vs verified honestly and claims before spawni
   assert.equal(spawned[0].args.includes('-d'), true);
 });
 
-test('runRestore aborts after 3 consecutive spawn failures and releases the lock', async (t) => {
+test('runRestore aborts after 3 consecutive spawn failures and releases the lock', wslOnly, async (t) => {
   const f = fixture(t);
   fs.writeFileSync(join(f.home, 'wez.exe'), 'MZ');
   const ids = ['a1', 'b2', 'c3', 'd4', 'e5', 'f6'];
@@ -202,7 +206,7 @@ test('runRestore aborts after 3 consecutive spawn failures and releases the lock
   assert.ok(!fs.existsSync(join(f.paths.workspace, 'restore.lock')), '恢复结束后必须释放锁');
 });
 
-test('runRestore refuses to run while a live holder owns the restore lock', async (t) => {
+test('runRestore refuses to run while a live holder owns the restore lock', wslOnly, async (t) => {
   const f = fixture(t);
   const holder = spawn('sleep', ['30'], { stdio: 'ignore' });
   t.after(() => { try { holder.kill('SIGKILL'); } catch {} });

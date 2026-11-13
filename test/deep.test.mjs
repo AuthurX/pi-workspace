@@ -14,6 +14,10 @@ import { preflight } from '../src/preflight.js';
 import { runRestore, summarize } from '../src/restore.js';
 import { run as cliRun, displayWidth } from '../src/cli.js';
 
+/** 需要 /run/WSL 互操作的测试仅在 WSL 内运行（CI 为普通 Linux，跳过）。 */
+const ON_WSL = fs.existsSync('/run/WSL');
+const wslOnly = { skip: ON_WSL ? false : '仅 WSL（需 /run/WSL 互操作）' };
+
 function fixture(t) {
   const home = fs.mkdtempSync(join(tmpdir(), 'pi-ws-deep-'));
   t.after(() => fs.rmSync(home, { recursive: true, force: true }));
@@ -220,7 +224,7 @@ test('writeMember creates member files with 0600 mode', (t) => {
   assert.equal(mode, 0o600);
 });
 
-test('runRestore reports failure without spawning when every restorable is claimed elsewhere', async (t) => {
+test('runRestore reports failure without spawning when every restorable is claimed elsewhere', wslOnly, async (t) => {
   const f = fixture(t);
   const holder = spawn('sleep', ['30'], { stdio: 'ignore' });
   t.after(() => { try { holder.kill('SIGKILL'); } catch {} });

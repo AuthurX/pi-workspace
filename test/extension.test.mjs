@@ -8,6 +8,10 @@ import test from 'node:test';
 
 const project = dirname(dirname(fileURLToPath(import.meta.url)));
 
+/** 需要 /run/WSL 互操作的测试仅在 WSL 内运行（CI 为普通 Linux，跳过）。 */
+const ON_WSL = fs.existsSync('/run/WSL');
+const wslOnly = { skip: ON_WSL ? false : '仅 WSL（需 /run/WSL 互操作）' };
+
 // 用真实 Node（原生 TS 类型剥离）加载扩展模块，配合假 Pi API 验证接线与生命周期。
 async function loadExtension(t) {
   const home = fs.mkdtempSync(join(tmpdir(), 'pi-ws-ext-'));
@@ -124,7 +128,7 @@ test('reload cleans up signal listeners without accumulating duplicates', async 
   assert.equal(process.listenerCount('SIGHUP'), before + 1);
 });
 
-test('/all delegates to shared core: spawns only non-live members, reports via notify', async (t) => {
+test('/all delegates to shared core: spawns only non-live members, reports via notify', wslOnly, async (t) => {
   const f = await loadExtension(t);
   f.events.session_start({}, f.context);
   const sessions = join(f.agentDir, 'sessions', 'proj');
