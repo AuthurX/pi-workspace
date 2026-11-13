@@ -16,6 +16,7 @@
 - 第二跳（v0.2.0-dev.7）又暴露一个既有竞态：`deadIdentity()` 在 spawn 后立即 kill，子进程尚未启动时 kill 失效（返回 false），`sleep 30` 存活导致 liveness 误判为 live（同类竞态还可能在 `await exit` 挂 30s）。
 - 修复二：`deadIdentity` 改 async，等 `spawn` 后再读启动时刻并 kill、再等 `exit`；两处立即 kill 的测试（claimSession/sweepClaims）同样先等 `spawn`。
 - v0.2.0-dev.6 与 v0.2.0-dev.7 tag 均已删除（两次 CI 均在 Test 步失败，npm 未发布、无 Release），以 0.2.0-dev.8 重新发布。
+- npm trusted publishing 已配置（npmjs.com → Trusted Publisher → GitHub Actions → AuthurX/pi-workspace）：dev.8 由 CI 发布成功（dist-tag next）并创建 GitHub Release，后续 tag 发布均走此通道。
 
 ## 恢复风暴致 WezTerm 卡死崩溃修复（2026-11-11）
 
