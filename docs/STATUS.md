@@ -1,6 +1,13 @@
 # 本机实现审查
 
-**当前结论：开发中，不能宣称第一版已完成。** 当前 `npm test` 55/55 通过。完整 WezTerm 多窗口恢复仍需验收。下方旧轮次记录不代表当前完成状态。
+**当前结论：0.2.0 正式版已发布（2026-11-13）。** `npm test` 55/55 通过，真实 WezTerm 恢复验收通过（见下）。下方旧轮次记录不代表当前完成状态。
+
+## 0.2.0 正式版验收与发布（2026-11-13）
+
+- `npm test` 55/55 通过；`python test/pty-shutdown.py` 3/3 通过（信号退出保留成员、主动 /quit 删除成员）。
+- `npm pack` 实物解压到临时目录，未设 `PI_WORKSPACE_SRC`：doctor / list / restore --dry-run / clear / 未知命令与退出码（0/1/2）全部正确。
+- 真实 WezTerm 恢复：1 个待恢复会话已启动并确认（新标签页经 `wezterm cli list` 核实），2 个运行中会话正确跳过。大规模并发开标签页（30+ 会话）仍是已接受风险，见 2026-11-11 故障复盘。
+- 发布：0.2.0（非预发布），`publishConfig.tag` 改为 `latest`，v0.2.0 tag 经 trusted publishing 发布到 npm（dist-tag latest）。
 
 ## CLI list 对齐表格（2026-11-13）
 
