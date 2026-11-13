@@ -30,11 +30,13 @@ function fixture(t) {
 
 function boot() { return currentBootId() ?? 'boot-x'; }
 
-/** 构造一个真实存在过、但已死亡的进程身份（模拟被动死亡）。 */
-function deadIdentity() {
+/** 构造一个真实存在过、但已死亡的进程身份（模拟被动死亡）；等 spawn/exit 避免 kill 先于子进程启动而失效的竞态。 */
+async function deadIdentity() {
   const child = spawn('sleep', ['30'], { stdio: 'ignore' });
+  await new Promise((resolve, reject) => { child.once('spawn', resolve); child.once('error', reject); });
   const start = processStart(child.pid);
   child.kill('SIGKILL');
+  await new Promise((r) => child.once('exit', r));
   return { pid: child.pid, processStart: start, bootId: boot() };
 }
 
@@ -46,10 +48,10 @@ function liveEntry(paths, id, overrides = {}) {
     pid: process.pid, processStart: processStart(process.pid), bootId: boot(), ...overrides };
 }
 
-test('member lifecycle: quit removes, passive death keeps, restore skips live', (t) => {
+test('member lifecycle: quit removes, passive death keeps, restore skips live', async (t) => {
   const f = fixture(t);
   const quit = liveEntry(f.paths, 'quit-id');
-  const passive = { ...liveEntry(f.paths, 'passive-id'), ...deadIdentity() };
+  const passive = { ...liveEntry(f.paths, 'passive-id'), ...(await deadIdentity()) };
   const running = liveEntry(f.paths, 'running-id');
   for (const e of [quit, passive, running]) writeMember(e, f.paths);
   deleteMember('quit-id', f.paths); // 主动退出 → 排除
@@ -151,7 +153,7 @@ test('preflight fails closed without spawning when interop is broken', wslOnly, 
 test('runRestore reports requested vs verified honestly and claims before spawning', wslOnly, async (t) => {
   const f = fixture(t);
   const spawned = [];
-  const entry = { ...liveEntry(f.paths, 'to-restore'), ...deadIdentity() };
+  const entry = { ...liveEntry(f.paths, 'to-restore'), ...(await deadIdentity()) };
   writeMember(entry, f.paths);
   fs.writeFileSync(join(f.home, 'wez.exe'), 'MZ');
   const result = await runRestore({
@@ -178,9 +180,9 @@ test('runRestore aborts after 3 consecutive spawn failures and releases the lock
   const f = fixture(t);
   fs.writeFileSync(join(f.home, 'wez.exe'), 'MZ');
   const ids = ['a1', 'b2', 'c3', 'd4', 'e5', 'f6'];
-  ids.forEach((id, i) => {
-    writeMember({ ...liveEntry(f.paths, id), ...deadIdentity(), ts: 1000 + i }, f.paths);
-  });
+  for (const [i, id] of ids.entries()) {
+    writeMember({ ...liveEntry(f.paths, id), ...(await deadIdentity()), ts: 1000 + i }, f.paths);
+  }
   const order = [];
   const result = await runRestore({
     env: { ...f.env, PI_WORKSPACE_WEZTERM: join(f.home, 'wez.exe') },
@@ -211,7 +213,7 @@ test('runRestore refuses to run while a live holder owns the restore lock', wslO
   const holder = spawn('sleep', ['30'], { stdio: 'ignore' });
   t.after(() => { try { holder.kill('SIGKILL'); } catch {} });
   acquireRestoreLock(f.paths, holder.pid);
-  writeMember({ ...liveEntry(f.paths, 'locked'), ...deadIdentity() }, f.paths);
+  writeMember({ ...liveEntry(f.paths, 'locked'), ...(await deadIdentity()) }, f.paths);
   fs.writeFileSync(join(f.home, 'wez.exe'), 'MZ');
   let spawned = 0;
   const opts = {

@@ -12,8 +12,10 @@
 ## Release workflow 首跑与 WSL 测试门控（2026-11-13）
 
 - 首个版本 tag（v0.2.0-dev.6）触发 `.github/workflows/release.yaml`：ubuntu runner 上 6 个依赖 `/run/WSL` 互操作的测试失败（preflight 真实检查在普通 Linux 上不过），npm 未发布。
-- 修复：core/deep/extension 三个测试文件的 6 个 WSL 专属测试加 `wslOnly` 门控（`fs.existsSync('/run/WSL')`，非 WSL 跳过并注明原因）；recent.test.mjs 本就通过 src 副本 stub preflight，不受影响。
-- v0.2.0-dev.6 tag 已删除（未发布、无 Release），以 0.2.0-dev.7 重新发布。
+- 修复一：core/deep/extension 三个测试文件的 6 个 WSL 专属测试加 `wslOnly` 门控（`fs.existsSync('/run/WSL')`，非 WSL 跳过并注明原因）；recent.test.mjs 本就通过 src 副本 stub preflight，不受影响。
+- 第二跳（v0.2.0-dev.7）又暴露一个既有竞态：`deadIdentity()` 在 spawn 后立即 kill，子进程尚未启动时 kill 失效（返回 false），`sleep 30` 存活导致 liveness 误判为 live（同类竞态还可能在 `await exit` 挂 30s）。
+- 修复二：`deadIdentity` 改 async，等 `spawn` 后再读启动时刻并 kill、再等 `exit`；两处立即 kill 的测试（claimSession/sweepClaims）同样先等 `spawn`。
+- v0.2.0-dev.6 与 v0.2.0-dev.7 tag 均已删除（两次 CI 均在 Test 步失败，npm 未发布、无 Release），以 0.2.0-dev.8 重新发布。
 
 ## 恢复风暴致 WezTerm 卡死崩溃修复（2026-11-11）
 

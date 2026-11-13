@@ -35,11 +35,13 @@ function liveEntry(paths, id, overrides = {}) {
     pid: process.pid, processStart: processStart(process.pid), bootId: 'boot-x', ...overrides };
 }
 
-/** 真实存在过但已死亡的进程身份（被动死亡）。 */
-function deadIdentity() {
+/** 真实存在过但已死亡的进程身份（被动死亡）；等 spawn/exit 避免 kill 先于子进程启动而失效的竞态。 */
+async function deadIdentity() {
   const child = spawn('sleep', ['30'], { stdio: 'ignore' });
+  await new Promise((resolve, reject) => { child.once('spawn', resolve); child.once('error', reject); });
   const start = processStart(child.pid);
   child.kill('SIGKILL');
+  await new Promise((r) => child.once('exit', r));
   return { pid: child.pid, processStart: start, bootId: 'boot-x' };
 }
 
@@ -65,6 +67,7 @@ test('claimSession: same owner reclaims; dead holder within TTL is reclaimable',
   const f = fixture(t);
   const holder = spawn('sleep', ['30'], { stdio: 'ignore' });
   t.after(() => { try { holder.kill('SIGKILL'); } catch {} });
+  await new Promise((r) => holder.once('spawn', r));
   assert.equal(claimSession('s1', process.pid, f.paths).claimed, true);
   assert.equal(claimSession('s1', process.pid, f.paths).claimed, true, '同一持有者可重复声明');
   claimSession('s2', holder.pid, f.paths);
@@ -77,6 +80,7 @@ test('sweepClaims removes expired and dead-holder claims, keeps fresh live and c
   const f = fixture(t);
   const holder = spawn('sleep', ['30'], { stdio: 'ignore' });
   const dead = spawn('sleep', ['30'], { stdio: 'ignore' });
+  await new Promise((r) => dead.once('spawn', r));
   dead.kill('SIGKILL');
   await new Promise((r) => dead.once('exit', r));
   t.after(() => { try { holder.kill('SIGKILL'); } catch {} });
@@ -92,9 +96,9 @@ test('sweepClaims removes expired and dead-holder claims, keeps fresh live and c
   assert.ok(fs.existsSync(join(f.paths.claims, 'corrupt.json')), '损坏声明保留，待 TTL 后接管');
 });
 
-test('plan marks sessions claimed by another restore as claimed', (t) => {
+test('plan marks sessions claimed by another restore as claimed', async (t) => {
   const f = fixture(t);
-  const entry = { ...liveEntry(f.paths, 'cl'), ...deadIdentity() };
+  const entry = { ...liveEntry(f.paths, 'cl'), ...(await deadIdentity()) };
   const plan = buildRestorePlan({
     members: [entry],
     paths: f.paths,
@@ -228,7 +232,7 @@ test('runRestore reports failure without spawning when every restorable is claim
   const f = fixture(t);
   const holder = spawn('sleep', ['30'], { stdio: 'ignore' });
   t.after(() => { try { holder.kill('SIGKILL'); } catch {} });
-  writeMember({ ...liveEntry(f.paths, 'cl'), ...deadIdentity() }, f.paths);
+  writeMember({ ...liveEntry(f.paths, 'cl'), ...(await deadIdentity()) }, f.paths);
   claimSession('cl', holder.pid, f.paths);
   fs.writeFileSync(join(f.home, 'wez.exe'), 'MZ');
   let spawned = 0;
