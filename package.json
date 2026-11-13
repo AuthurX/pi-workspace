@@ -19,6 +19,7 @@
   "type": "module",
   "keywords": [
     "pi-package",
+    "pi-extension",
     "workspace",
     "wezterm",
     "wsl"
